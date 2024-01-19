@@ -136,14 +136,6 @@ public class AidlNetworkRequest extends NetworkRequest {
         mContext = null;
     }
 
-    /**
-     * @deprecated Use {@link #close()}
-     */
-    @Deprecated(forRemoval = true)
-    public void stop() {
-        close();
-    }
-
     private void unbindService() {
         // Unbind from the service
         if (mBound.get()) {
@@ -164,11 +156,11 @@ public class AidlNetworkRequest extends NetworkRequest {
             if (!mBound.get()) {
                 Log.v(TAG, "[waitForApi] - api not ready yet.. waiting [" + Thread.currentThread().getName() + "]");
                 try {
-                    mBound.wait(10000); // wait up to 10 seconds
+                    mBound.wait(10_000); // wait up to 10 seconds
 
                     // If api is still not bound after 10 seconds.. try reconnecting
                     if (!mBound.get()) {
-                        throw new NextcloudApiNotRespondingException();
+                        throw new NextcloudApiNotRespondingException(mContext);
                     }
                 } catch (InterruptedException ex) {
                     Log.e(TAG, "WaitForAPI failed", ex);
@@ -194,7 +186,7 @@ public class AidlNetworkRequest extends NetworkRequest {
             // Handle Remote Exceptions
             if (response.getException() != null) {
                 if (response.getException().getMessage() != null) {
-                    throw parseNextcloudCustomException(response.getException());
+                    throw parseNextcloudCustomException(mContext, response.getException());
                 }
                 throw response.getException();
             }

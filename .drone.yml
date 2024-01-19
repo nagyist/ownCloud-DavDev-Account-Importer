@@ -1,10 +1,11 @@
+---
 kind: pipeline
 type: docker
 name: tests
 
 steps:
   - name: gplay
-    image: ghcr.io/nextcloud/continuous-integration-androidandroidbase:5
+    image: ghcr.io/nextcloud/continuous-integration-android8:3
     environment:
       LOG_USERNAME:
         from_secret: LOG_USERNAME
@@ -45,7 +46,7 @@ name: analysis
 
 steps:
   - name: analysis
-    image: ghcr.io/nextcloud/continuous-integration-androidandroidbase:5
+    image: ghcr.io/nextcloud/continuous-integration-android8:3
     environment:
       GIT_USERNAME:
         from_secret: GIT_USERNAME
@@ -88,3 +89,6 @@ trigger:
   event:
     - push
     - pull_request
+---
+kind: signature
+hmac: 2bc767f5a9ed22cabbe2bcfd29d4ee70d094ea977f96ebc58137e9b3f5aa40dd

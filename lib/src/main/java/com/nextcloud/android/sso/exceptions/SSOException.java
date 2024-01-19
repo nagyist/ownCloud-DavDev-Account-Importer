@@ -19,102 +19,101 @@
 
 package com.nextcloud.android.sso.exceptions;
 
-import android.annotation.SuppressLint;
-import android.app.Application;
 import android.content.Context;
-import android.util.Log;
+import android.content.Intent;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 
 import com.nextcloud.android.sso.Constants;
-import com.nextcloud.android.sso.R;
-import com.nextcloud.android.sso.model.ExceptionMessage;
+
+import java.util.Optional;
 
 public class SSOException extends Exception {
 
-    private static final String TAG = SSOException.class.getCanonicalName();
-    protected ExceptionMessage em;
+    @Nullable
+    @StringRes
+    protected final Integer titleRes;
+    @Nullable
+    @StringRes
+    protected final Integer actionTextRes;
+    @Nullable
+    protected final Intent actionIntent;
 
     public SSOException() {
-        super("Single Sign On Exception (use getMessage(context) for more information)");
+        this(null);
     }
 
-    public void loadExceptionMessage(@NonNull Context context) {
-        this.em = new ExceptionMessage(
-                context.getString(R.string.unknown_error),
-                context.getString(R.string.unknown_error)
-        );
+    public SSOException(String message) {
+        this(message, null);
     }
 
-    public String getTitle(@NonNull Context context) {
-        if (em == null) {
-            loadExceptionMessage(context);
-        }
-        return em.title;
+    public SSOException(String message, @Nullable @StringRes Integer titleRes) {
+        this(message, titleRes, null, null);
     }
 
-    public String getMessage(@NonNull Context context) {
-        if (em == null) {
-            loadExceptionMessage(context);
-        }
-        return em.message;
+    public SSOException(String message,
+                        @Nullable @StringRes Integer titleRes,
+                        @Nullable Throwable cause) {
+        this(message, titleRes, null, null, cause);
     }
 
-    @Override
-    public String getMessage() {
-        // If already loaded.. return it
-        if (em != null) {
-            return em.message;
-        }
-
-        // Otherwise try to get the application via reflection
-        Application app = getApplication();
-        if (app != null) {
-            loadExceptionMessage(app);
-            return em.message;
-        }
-
-        // If that didn't work.. well return the "generic" base message
-        return super.getMessage();
+    public SSOException(String message,
+                        @Nullable @StringRes Integer titleRes,
+                        @Nullable @StringRes Integer actionTextRes,
+                        @Nullable Intent actionIntent) {
+        this(message, titleRes, actionTextRes, actionIntent, null);
     }
 
-    @SuppressLint("PrivateApi")
-    private Application getApplication() {
-        try {
-            return (Application) Class.forName("android.app.ActivityThread")
-                    .getMethod("currentApplication").invoke(null, (Object[]) null);
-        } catch (Exception e) {
-            final String message = e.getMessage();
-            Log.e(TAG, message == null ? e.getClass().getSimpleName() : message);
-        }
-        return null;
+    public SSOException(String message,
+                        @Nullable @StringRes Integer titleRes,
+                        @Nullable @StringRes Integer actionTextRes,
+                        @Nullable Intent actionIntent,
+                        @Nullable Throwable cause) {
+        super(message, cause);
+        this.titleRes = titleRes;
+        this.actionTextRes = actionTextRes;
+        this.actionIntent = actionIntent;
     }
 
+    public Optional<Integer> getTitleRes() {
+        return Optional.ofNullable(titleRes);
+    }
 
-    public static SSOException parseNextcloudCustomException(@Nullable Exception exception) {
+    public Optional<Integer> getPrimaryActionTextRes() {
+        return Optional.ofNullable(actionTextRes);
+    }
+
+    public Optional<Intent> getPrimaryAction() {
+        return Optional.ofNullable(actionIntent);
+    }
+
+    public static SSOException parseNextcloudCustomException(@NonNull Context context, @Nullable Exception exception) {
         if (exception == null) {
             return new UnknownErrorException("Parsed exception is null");
         }
+
         final String message = exception.getMessage();
         if (message == null) {
             return new UnknownErrorException("Exception message is null");
         }
+
         switch (message) {
             case Constants.EXCEPTION_INVALID_TOKEN:
-                return new TokenMismatchException();
+                return new TokenMismatchException(context);
             case Constants.EXCEPTION_ACCOUNT_NOT_FOUND:
-                return new NextcloudFilesAppAccountNotFoundException();
+                return new NextcloudFilesAppAccountNotFoundException(context);
             case Constants.EXCEPTION_UNSUPPORTED_METHOD:
-                return new NextcloudUnsupportedMethodException();
+                return new NextcloudUnsupportedMethodException(context);
             case Constants.EXCEPTION_INVALID_REQUEST_URL:
-                return new NextcloudInvalidRequestUrlException(exception.getCause().getMessage());
+                return new NextcloudInvalidRequestUrlException(context, exception.getCause());
             case Constants.EXCEPTION_HTTP_REQUEST_FAILED:
-                int statusCode = Integer.parseInt(exception.getCause().getMessage());
-                Throwable cause = exception.getCause().getCause();
-                return new NextcloudHttpRequestFailedException(statusCode, cause);
+                final int statusCode = Integer.parseInt(exception.getCause().getMessage());
+                final var cause = exception.getCause().getCause();
+                return new NextcloudHttpRequestFailedException(context, statusCode, cause);
             case Constants.EXCEPTION_ACCOUNT_ACCESS_DECLINED:
-                return new NextcloudFilesAppAccountPermissionNotGrantedException();
+                return new NextcloudFilesAppAccountPermissionNotGrantedException(context);
             default:
                 return new UnknownErrorException(exception.getMessage());
         }
